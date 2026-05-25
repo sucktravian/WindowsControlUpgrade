@@ -13,11 +13,11 @@ I mainly made this to avoid digging through the registry manually every time. Sh
 
 ## Features
 
-- 🔒 Lock/unlock Windows upgrade behavior  
-- 🌗 Toggle between light and dark mode  
-- 🧾 View and open relevant registry keys  
-- 🌐 Localized (English 🇺🇸 / Japanese 🇯🇵)  
-- 🎞 Animated status bar just for fun
+- Lock/unlock Windows upgrade behavior  
+- Toggle between light and dark mode  
+- View and open relevant registry keys  
+- Localized (English 🇺🇸 / Japanese 🇯🇵)  
+- Animated status bar just for fun
 
 ## Requirements
 
