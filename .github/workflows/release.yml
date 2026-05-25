@@ -1,0 +1,84 @@
+name: Deploy portable release
+
+permissions:
+  contents: write
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - "ControlUpgrade/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+jobs:
+  deploy-to-github-releases:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Get Version from Project File
+        id: get-version
+        shell: pwsh
+        run: |
+          [xml]$project = Get-Content .\ControlUpgrade\ControlUpgrade.csproj
+          $version = $project.Project.PropertyGroup.Version | Select-Object -First 1
+
+          if ([string]::IsNullOrWhiteSpace($version)) {
+            throw "ControlUpgrade.csproj must define a <Version> value before publishing."
+          }
+
+          "version=$version" >> $env:GITHUB_OUTPUT
+
+      - name: Check Existing Release
+        id: check-release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release view "v${{ steps.get-version.outputs.version }}" --repo $env:GITHUB_REPOSITORY *> $null
+
+          if ($LASTEXITCODE -eq 0) {
+            "exists=true" >> $env:GITHUB_OUTPUT
+          } else {
+            "exists=false" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Install .NET
+        if: steps.check-release.outputs.exists == 'false'
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 9.0.x
+
+      - name: Publish Application
+        if: steps.check-release.outputs.exists == 'false'
+        run: dotnet publish .\ControlUpgrade\ControlUpgrade.csproj -c Release -o "${{ github.workspace }}\publish" -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -p:PublishReadyToRun=true
+
+      - name: Create Portable Archive
+        if: steps.check-release.outputs.exists == 'false'
+        shell: pwsh
+        run: |
+          $archive = "ControlUpgrade-${{ steps.get-version.outputs.version }}-portable-win-x64.zip"
+          Compress-Archive -Path "${{ github.workspace }}\publish\*" -DestinationPath $archive -Force
+          "archive=$archive" >> $env:GITHUB_ENV
+
+      - name: Create GitHub Release
+        if: steps.check-release.outputs.exists == 'false'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "v${{ steps.get-version.outputs.version }}" $env:archive `
+            --repo $env:GITHUB_REPOSITORY `
+            --target $env:GITHUB_SHA `
+            --title "ControlUpgrade ${{ steps.get-version.outputs.version }}" `
+            --notes "Portable Windows x64 build. No .NET Desktop Runtime installation required."
+
+      - name: Skip Existing Release
+        if: steps.check-release.outputs.exists == 'true'
+        shell: pwsh
+        run: Write-Host "Release v${{ steps.get-version.outputs.version }} already exists. Update <Version> to publish a new release."

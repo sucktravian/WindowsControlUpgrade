@@ -22,7 +22,29 @@ I mainly made this to avoid digging through the registry manually every time. Sh
 ## Requirements
 
 - Windows 10 or 11  
-- .NET Desktop Runtime (unless you use the standalone version)
+- No .NET install required when using the portable release
+
+## Portable build
+
+Publish the portable Windows x64 package with:
+
+```powershell
+dotnet publish .\ControlUpgrade\ControlUpgrade.csproj /p:PublishProfile=Portable-win-x64
+```
+
+Pack the files from:
+
+```text
+ControlUpgrade\bin\Release\net9.0-windows\win-x64\publish\portable\
+```
+
+This output is self-contained, so Windows should not ask users to download the .NET Desktop Runtime.
+
+## Release publishing
+
+To publish a new GitHub release, update the `<Version>` value in `ControlUpgrade/ControlUpgrade.csproj`, then commit and push to `main` or `master`.
+
+GitHub Actions will build the portable package and create a release named after that version, such as `v1.0.0`. If that release already exists, the workflow skips publishing.
 
 ## License
 
